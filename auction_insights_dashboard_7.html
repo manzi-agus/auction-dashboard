@@ -488,7 +488,7 @@ function renderTable() {
       const td = document.createElement('td');
       const v  = dataMap[w]?.[d]?.[selectedMetric];
       if (v == null) { td.textContent = '—'; td.style.color = '#888780'; }
-      else { td.textContent = v.toFixed(2) + '%'; if (d === 'You') td.className = 'you-cell'; }
+      else { td.textContent = v.toFixed(0) + '%'; if (d === 'You') td.className = 'you-cell'; }
       tr.appendChild(td);
     });
     body.appendChild(tr);
@@ -522,7 +522,7 @@ function renderChart() {
       interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: { display: false },
-        tooltip: { callbacks: { label: c => c.parsed.y == null ? null : ` ${c.dataset.label}: ${c.parsed.y.toFixed(2)}%` } }
+        tooltip: { callbacks: { label: c => c.parsed.y == null ? null : ` ${c.dataset.label}: ${c.parsed.y.toFixed(0)}%` } }
       },
       scales: {
         x: { ticks: { font: { size: 11 }, maxRotation: 45, autoSkip: false, color: '#888780' }, grid: { color: 'rgba(136,135,128,0.12)' } },
