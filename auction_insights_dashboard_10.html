@@ -305,7 +305,7 @@ function gisLoaded() {
 
 function ensureAuth(then) {
   if (!accessToken) { tokenClient._pendingAction = then; tokenClient.requestAccessToken({ prompt: 'consent' }); }
-  else gapiReady.then(() => then());
+  else ();
 }
 
 /* ── Picker ── */
