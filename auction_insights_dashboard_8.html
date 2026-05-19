@@ -133,6 +133,10 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
         Choose from Drive
       </button>
+      <button class="btn" id="openLibBtn" onclick="openLibraryModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Open from library
+      </button>
       <button class="btn" id="refreshBtn" onclick="refreshData()" disabled>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
         Refresh data
@@ -193,6 +197,17 @@
       <div style="position:relative;width:100%;height:320px">
         <canvas id="lineChart"></canvas>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Library browse modal -->
+<div class="modal-backdrop" id="libraryModal">
+  <div class="modal" style="min-width:380px;max-width:520px">
+    <h3>Open from library</h3>
+    <div id="libModalContent" style="max-height:360px;overflow-y:auto;margin-bottom:1rem"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('libraryModal')">Close</button>
     </div>
   </div>
 </div>
@@ -274,8 +289,13 @@ function gisLoaded() {
       if (resp.error) { setStatus('Sign-in error: ' + resp.error, 'error'); return; }
       accessToken = resp.access_token;
       await loadLibrary();
-      if (currentFileId) loadFileData();
-      else openPicker();
+      if (tokenClient._pendingAction) {
+        const action = tokenClient._pendingAction;
+        tokenClient._pendingAction = null;
+        action();
+      } else if (currentFileId) {
+        loadFileData();
+      }
     }
   });
 }
@@ -523,6 +543,45 @@ async function confirmRename() {
 
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.modal-backdrop').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); }));
+
+function openLibraryModal() {
+  ensureAuth(async () => {
+    const content = document.getElementById('libModalContent');
+    content.innerHTML = '<div style="font-size:13px;color:var(--text-secondary);padding:1rem 0">Loading library…</div>';
+    document.getElementById('libraryModal').classList.add('open');
+    try {
+      const rows = await getLibraryRows();
+      const folders = {};
+      rows.forEach(r => {
+        if (!r[0]) return;
+        if (!folders[r[0]]) folders[r[0]] = [];
+        if (r[1]) folders[r[0]].push({ reportName: r[1], fileId: r[2]||'', fileName: r[3]||r[1], fileUrl: r[4]||'' });
+      });
+      const keys = Object.keys(folders);
+      if (!keys.length) { content.innerHTML = '<div class="empty-lib">No saved reports yet.</div>'; return; }
+      content.innerHTML = '';
+      keys.forEach(folder => {
+        const fhead = document.createElement('div');
+        fhead.style.cssText = 'font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-secondary);padding:10px 0 6px';
+        fhead.textContent = folder;
+        content.appendChild(fhead);
+        folders[folder].forEach(rep => {
+          const row = document.createElement('div');
+          row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px;';
+          row.onmouseenter = () => row.style.background = 'var(--bg-secondary)';
+          row.onmouseleave = () => row.style.background = '';
+          const name = document.createElement('span'); name.textContent = rep.reportName;
+          const loadBtn = document.createElement('button');
+          loadBtn.className = 'btn sm primary';
+          loadBtn.textContent = 'Load';
+          loadBtn.onclick = () => { closeModal('libraryModal'); loadFromLibrary(rep); };
+          row.appendChild(name); row.appendChild(loadBtn);
+          content.appendChild(row);
+        });
+      });
+    } catch(e) { content.innerHTML = `<div style="color:#a32d2d;font-size:13px">${e.message||e}</div>`; }
+  });
+}
 
 /* ── Data loading ── */
 function refreshData() {
